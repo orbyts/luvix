@@ -79,9 +79,11 @@ def doctor(
         f"{diagnostics['python']['implementation']} {diagnostics['python']['version']}",
     )
     apple = diagnostics["apple_hdr"]
+    table.add_row("Swift compiler", apple["swift_status"])
+    table.add_row("Xcode toolchain", apple["toolchain_status"])
     table.add_row(
         "Apple HDR backend",
-        "ready" if apple["runtime_ready"] else "unavailable on this runtime",
+        "ready" if apple["runtime_ready"] else "not ready",
     )
     table.add_row("HDR gain-map inspection", "implemented")
     table.add_row("Component extraction", "implemented")
@@ -97,6 +99,17 @@ def doctor(
     console.print(table)
 
 
+def _render_json(raw: str, *, compact: bool) -> str:
+    """Normalize backend JSON for humans or shell pipelines."""
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise BackendError(f"Native backend returned invalid JSON: {exc}") from exc
+    if compact:
+        return json.dumps(payload, separators=(",", ":"), sort_keys=True)
+    return json.dumps(payload, indent=2, sort_keys=True)
+
+
 def _native(*args: str) -> str:
     try:
         return run_backend(*args)
@@ -106,9 +119,18 @@ def _native(*args: str) -> str:
 
 
 @app.command()
-def inspect(source: Path) -> None:
+def inspect(
+    source: Path,
+    compact: Annotated[
+        bool, typer.Option("--compact", help="Emit single-line JSON for scripts.")
+    ] = False,
+) -> None:
     """Inspect Apple HEIC HDR base and gain-map layout (macOS)."""
-    typer.echo(_native("inspect", str(source)))
+    try:
+        typer.echo(_render_json(_native("inspect", str(source)), compact=compact))
+    except BackendError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
 
 
 @app.command()
@@ -152,12 +174,15 @@ def validate(
 def inspect_hdr(
     source: Path,
     samples: Annotated[int, typer.Option("--samples", min=1, max=64)] = 16,
+    compact: Annotated[
+        bool, typer.Option("--compact", help="Emit single-line JSON for scripts.")
+    ] = False,
 ) -> None:
     """Probe Apple's HDR-aware decode into extended linear Display P3 (macOS)."""
     from luvix.backends.apple.hdr_probe import run_hdr_probe
 
     try:
-        typer.echo(run_hdr_probe(source, samples))
+        typer.echo(_render_json(run_hdr_probe(source, samples), compact=compact))
     except BackendError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc

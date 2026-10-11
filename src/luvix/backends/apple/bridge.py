@@ -28,7 +28,13 @@ def backend_binary() -> Path:
             check=False,
         )
         if result.returncode:
-            raise BackendError(f"Swift compilation failed:\n{result.stderr}")
+            message = (result.stderr or result.stdout).strip()
+            if "license" in message.lower() and "xcode" in message.lower():
+                raise BackendError(
+                    "Xcode license agreements have not been accepted. "
+                    "Run `sudo xcodebuild -license`, accept the license, and retry."
+                )
+            raise BackendError(f"Swift compilation failed:\n{message}")
     return target
 
 
