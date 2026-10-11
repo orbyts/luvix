@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import platform
 import shutil
+import subprocess
 from ctypes.util import find_library
 from importlib import import_module
 from importlib.metadata import PackageNotFoundError, version
@@ -58,13 +59,59 @@ def _pyvips_capabilities() -> tuple[dict[str, Any], dict[str, Any], dict[str, bo
     return pyvips_result, libvips_result, operations
 
 
+def _swift_toolchain_status() -> dict[str, Any]:
+    """Probe Swift/Xcode without compiling or modifying user files."""
+    compiler = shutil.which("swiftc")
+    if compiler is None:
+        return {
+            "compiler_available": False,
+            "swift_status": "not installed",
+            "toolchain_status": "not available",
+            "ready": False,
+            "detail": None,
+        }
+    try:
+        result = subprocess.run(
+            [compiler, "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "compiler_available": True,
+            "swift_status": "installed",
+            "toolchain_status": "unavailable",
+            "ready": False,
+            "detail": str(exc),
+        }
+    message = (result.stderr or result.stdout).strip()
+    if result.returncode == 0:
+        return {
+            "compiler_available": True,
+            "swift_status": "installed",
+            "toolchain_status": "ready",
+            "ready": True,
+            "detail": None,
+        }
+    license_issue = "license" in message.lower() and "xcode" in message.lower()
+    return {
+        "compiler_available": True,
+        "swift_status": "installed",
+        "toolchain_status": "Xcode license not accepted" if license_issue else "not ready",
+        "ready": False,
+        "detail": message or f"swiftc exited with status {result.returncode}",
+    }
+
+
 def collect_diagnostics(luvix_version: str) -> dict[str, Any]:
     """Collect diagnostics without modifying files or revealing credential values."""
     pyvips, libvips, operations = _pyvips_capabilities()
     cloudinary_version = _distribution_version("cloudinary")
     ultrahdr_library = find_library("ultrahdr")
     is_macos = platform.system() == "Darwin"
-    swift_available = shutil.which("swiftc") is not None
+    swift = _swift_toolchain_status()
     return {
         "luvix": {"release": "functional", "version": luvix_version},
         "python": {
@@ -74,8 +121,11 @@ def collect_diagnostics(luvix_version: str) -> dict[str, Any]:
         "apple_hdr": {
             "implemented": True,
             "platform_supported": is_macos,
-            "swift_compiler_available": swift_available,
-            "runtime_ready": is_macos and swift_available,
+            "swift_compiler_available": swift["compiler_available"],
+            "swift_status": swift["swift_status"],
+            "toolchain_status": swift["toolchain_status"],
+            "toolchain_detail": swift["detail"],
+            "runtime_ready": is_macos and swift["ready"],
         },
         "hdr_processing": {
             "implemented": True,

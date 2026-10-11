@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.3] - 2026-10-11
+
+### Added
+- Pretty-printed JSON output for `inspect` and `inspect-hdr`.
+- `--compact` output for machine-readable single-line JSON.
+- Swift compiler and Xcode toolchain readiness diagnostics.
+- Actionable diagnostics when the Xcode license has not been accepted.
+- Release/milestone/slice-based engineering roadmap.
+
+### Changed
+- `doctor` now distinguishes Swift installation, Xcode toolchain readiness,
+  and Apple HDR backend readiness.
+- `ROADMAP.md` is now the shared engineering ledger and source of truth for
+  release progress, acceptance criteria, evidence, and next actions.
+
+### Notes
+- HDR reconstruction, gain-map processing, TIFF encoding, PQ math, and color
+  management algorithms are unchanged from v0.1.2.
+- The next planned release is v0.1.4, focused on Apple JPEG gain maps.
+
+
+
 ## [0.1.2] - 2026-10-10
 
 ### Changed

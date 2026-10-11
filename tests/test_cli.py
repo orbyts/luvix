@@ -43,6 +43,9 @@ def test_doctor_json_has_stable_contract() -> None:
         "implemented",
         "platform_supported",
         "swift_compiler_available",
+        "swift_status",
+        "toolchain_status",
+        "toolchain_detail",
         "runtime_ready",
     }
     assert set(payload["ultrahdr"]) == {"library_discoverable", "uhdrload", "uhdrsave"}
