@@ -273,3 +273,66 @@ def batch_extract(
         )
     if report["failed"]:
         raise typer.Exit(1)
+
+
+batch_export_app = typer.Typer(help="Batch HDR raster exports")
+batch_app.add_typer(batch_export_app, name="export")
+
+
+@batch_export_app.command("tiff")
+def batch_export_tiff(
+    inputs: Annotated[list[Path], typer.Argument()],
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    bit_depth: Annotated[int, typer.Option("--bit-depth")],
+    transfer: Annotated[str, typer.Option("--transfer")],
+    color_space: Annotated[str, typer.Option("--color-space")] = "source",
+    reference_white: Annotated[float | None, typer.Option("--reference-white")] = None,
+    icc_profile: Annotated[Path | None, typer.Option("--icc-profile")] = None,
+    experimental_untagged: Annotated[bool, typer.Option("--experimental-untagged")] = False,
+    recursive: Annotated[bool, typer.Option("--recursive")] = False,
+    fail_fast: Annotated[bool, typer.Option("--fail-fast")] = False,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Export mixed HEIC/JPEG HDR images to 32-bit linear or 16-bit PQ TIFF."""
+    from luvix.batch.discovery import BatchInputError, discover
+    from luvix.batch.tiff import export_tiff_many
+    from luvix.hdr.export import export_apple_hdr_tiff
+
+    if (bit_depth, transfer) not in {(32, "linear"), (16, "pq")}:
+        raise typer.BadParameter("Only 32/linear and 16/pq are supported")
+    if color_space != "source":
+        raise typer.BadParameter("Only --color-space source is supported")
+    if bit_depth == 16 and reference_white is None:
+        raise typer.BadParameter("PQ requires --reference-white")
+    if bit_depth == 32 and reference_white is not None:
+        raise typer.BadParameter("--reference-white requires 16/pq")
+    if icc_profile and (bit_depth != 16 or experimental_untagged):
+        raise typer.BadParameter("--icc-profile requires tagged 16/pq")
+    if icc_profile and not icc_profile.is_file():
+        raise typer.BadParameter(f"ICC profile not found: {icc_profile}")
+    try:
+        items = discover(inputs, recursive=recursive)
+    except BatchInputError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    report = export_tiff_many(
+        items,
+        output,
+        exporter=export_apple_hdr_tiff,
+        bit_depth=bit_depth,
+        transfer=transfer,
+        reference_white_nits=reference_white,
+        external_pq_icc=icc_profile,
+        embed_icc=not experimental_untagged,
+        continue_on_error=not fail_fast,
+    )
+    if as_json:
+        typer.echo(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        for row in report["results"]:
+            typer.echo(f"{row['status']}: {row['source']} -> {row['output']}")
+            if "error" in row:
+                typer.echo(f"  {row['error']}", err=True)
+        typer.echo(f"{report['succeeded']} succeeded; {report['failed']} failed")
+    if report["failed"]:
+        raise typer.Exit(1)
