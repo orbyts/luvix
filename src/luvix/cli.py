@@ -230,3 +230,170 @@ def export_tiff(
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(json.dumps(report, indent=2, sort_keys=True))
+
+
+# Batch orchestration deliberately reuses the native single-image operation.
+batch_app = typer.Typer(help="Process collections of Apple HDR HEIC/JPEG images")
+app.add_typer(batch_app, name="batch")
+
+
+@batch_app.command("extract")
+def batch_extract(
+    inputs: Annotated[list[Path], typer.Argument(help="Input files and/or directories")],
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    recursive: Annotated[
+        bool, typer.Option("--recursive", help="Search directories recursively")
+    ] = False,
+    fail_fast: Annotated[
+        bool, typer.Option("--fail-fast", help="Stop after first extraction failure")
+    ] = False,
+    as_json: Annotated[bool, typer.Option("--json", help="Emit machine-readable summary")] = False,
+) -> None:
+    """Extract upright base/gain-map/manifest sets from multiple images."""
+    from luvix.batch.discovery import BatchInputError, discover
+    from luvix.batch.extract import extract_many
+
+    try:
+        items = discover(inputs, recursive=recursive)
+    except BatchInputError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    report = extract_many(items, output, backend=run_backend, continue_on_error=not fail_fast)
+    if as_json:
+        typer.echo(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        for row in report["results"]:
+            label = "OK" if row["status"] == "ok" else "FAILED"
+            typer.echo(f"{label}: {row['source']} -> {row['output']}")
+            if "error" in row:
+                typer.echo(f"  {row['error']}", err=True)
+        typer.echo(
+            f"Processed {report['processed']}/{report['total']}: "
+            f"{report['succeeded']} succeeded, {report['failed']} failed"
+        )
+    if report["failed"]:
+        raise typer.Exit(1)
+
+
+batch_export_app = typer.Typer(help="Batch HDR raster exports")
+batch_app.add_typer(batch_export_app, name="export")
+
+
+@batch_export_app.command("tiff")
+def batch_export_tiff(
+    inputs: Annotated[list[Path], typer.Argument()],
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    bit_depth: Annotated[int, typer.Option("--bit-depth")],
+    transfer: Annotated[str, typer.Option("--transfer")],
+    color_space: Annotated[str, typer.Option("--color-space")] = "source",
+    reference_white: Annotated[float | None, typer.Option("--reference-white")] = None,
+    icc_profile: Annotated[Path | None, typer.Option("--icc-profile")] = None,
+    experimental_untagged: Annotated[bool, typer.Option("--experimental-untagged")] = False,
+    recursive: Annotated[bool, typer.Option("--recursive")] = False,
+    fail_fast: Annotated[bool, typer.Option("--fail-fast")] = False,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Export mixed HEIC/JPEG HDR images to 32-bit linear or 16-bit PQ TIFF."""
+    from luvix.batch.discovery import BatchInputError, discover
+    from luvix.batch.tiff import export_tiff_many
+    from luvix.hdr.export import export_apple_hdr_tiff
+
+    if (bit_depth, transfer) not in {(32, "linear"), (16, "pq")}:
+        raise typer.BadParameter("Only 32/linear and 16/pq are supported")
+    if color_space != "source":
+        raise typer.BadParameter("Only --color-space source is supported")
+    if bit_depth == 16 and reference_white is None:
+        raise typer.BadParameter("PQ requires --reference-white")
+    if bit_depth == 32 and reference_white is not None:
+        raise typer.BadParameter("--reference-white requires 16/pq")
+    if icc_profile and (bit_depth != 16 or experimental_untagged):
+        raise typer.BadParameter("--icc-profile requires tagged 16/pq")
+    if icc_profile and not icc_profile.is_file():
+        raise typer.BadParameter(f"ICC profile not found: {icc_profile}")
+    try:
+        items = discover(inputs, recursive=recursive)
+    except BatchInputError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    report = export_tiff_many(
+        items,
+        output,
+        exporter=export_apple_hdr_tiff,
+        bit_depth=bit_depth,
+        transfer=transfer,
+        reference_white_nits=reference_white,
+        external_pq_icc=icc_profile,
+        embed_icc=not experimental_untagged,
+        continue_on_error=not fail_fast,
+    )
+    if as_json:
+        typer.echo(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        for row in report["results"]:
+            typer.echo(f"{row['status']}: {row['source']} -> {row['output']}")
+            if "error" in row:
+                typer.echo(f"  {row['error']}", err=True)
+        typer.echo(f"{report['succeeded']} succeeded; {report['failed']} failed")
+    if report["failed"]:
+        raise typer.Exit(1)
+
+
+def _batch_rebuild_report(report: dict, *, as_json: bool) -> None:
+    """Render batch result without mixing machine output and progress messages."""
+    if as_json:
+        typer.echo(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        for row in report["results"]:
+            typer.echo(f"{row['status'].upper()}: {row['source']} -> {row['output']}")
+            if "error" in row:
+                typer.echo(f"  {row['error']}", err=True)
+        typer.echo(
+            f"Processed {report['processed']}/{report['total']}: "
+            f"{report['succeeded']} succeeded, {report['failed']} failed"
+        )
+    if report["failed"]:
+        raise typer.Exit(1)
+
+
+@batch_app.command("rebuild")
+def batch_rebuild(
+    extracted: Annotated[Path, typer.Argument(help="Directory of extracted component sets")],
+    sources: Annotated[Path, typer.Option("--sources", help="Original HEIC/JPEG directory")],
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    recursive: Annotated[bool, typer.Option("--recursive")] = False,
+    fail_fast: Annotated[bool, typer.Option("--fail-fast")] = False,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Rebuild HDR HEIC/JPEG from matching component directories and originals."""
+    from luvix.batch.rebuild import BatchPairingError, discover_pairs, rebuild_many
+
+    try:
+        pairs = discover_pairs(extracted, sources, recursive=recursive)
+    except BatchPairingError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    report = rebuild_many(pairs, output, backend=run_backend, continue_on_error=not fail_fast)
+    _batch_rebuild_report(report, as_json=as_json)
+
+
+@batch_app.command("validate")
+def batch_validate(
+    rebuilt: Annotated[Path, typer.Argument(help="Directory containing rebuilt images")],
+    sources: Annotated[Path, typer.Option("--sources", help="Original HEIC/JPEG directory")],
+    extracted: Annotated[
+        Path, typer.Option("--extracted", help="Component directory with source manifests")
+    ],
+    recursive: Annotated[bool, typer.Option("--recursive")] = False,
+    fail_fast: Annotated[bool, typer.Option("--fail-fast")] = False,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Validate rebuilt Apple HDR images against manifest-matched originals."""
+    from luvix.batch.rebuild import BatchPairingError, discover_pairs, validate_many
+
+    try:
+        pairs = discover_pairs(extracted, sources, recursive=recursive)
+    except BatchPairingError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    report = validate_many(pairs, rebuilt, backend=run_backend, continue_on_error=not fail_fast)
+    _batch_rebuild_report(report, as_json=as_json)
