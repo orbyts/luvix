@@ -23,29 +23,23 @@ The public CLI should describe operations rather than backend implementation det
 
 ## Current position
 
-Release: **v0.1.4 (release candidate)**
+Release: **v0.1.5 (development)**
 
-Theme: Apple iPhone HDR gain-map interoperability across HEIC and JPEG.
+Theme: Batch Apple HDR HEIC/JPEG workflows; reuse validated single-image operations.
 
-Active slice: **R1.4 — release validation**.
+Active slice: **B1/B2 — discovery and component extraction implementation validation**.
 
-Verified evidence (through 2026-10-12):
-- Genuine iPhone 16 Pro HEIC/JPEG HDR gain-map captures characterized; sanitized public candidates retain L008 gain maps, Display P3, orientation 6, and distinct SDR/HDR ImageIO decodes.
-- HEIC and JPEG inspect, inspect-hdr, extraction, rebuild, validation, and 32-bit linear TIFF paths work on the real fixtures.
-- Extraction normalizes orientation 6 into upright 4284x5712 base and 2142x2856 gain-map PNGs; rebuild restores 5712x4284 / 2856x2142 raw geometry and orientation 6.
-- Geometry mismatch is rejected; semantic/color/exposure edits are intentionally not policed.
-- JPEG-derived 16-bit PQ TIFF writes 16-bit RGB, orientation 6, and a supplied compatible `P3 PQ` ICC.
-- HEIC rebuild regression validates structurally with Display P3 and orientation preserved.
-- Internal fidelity baselines exist for lossy rebuild regression, but fidelity does not gate user edits.
-- 71 automated tests passed after orientation/geometry implementation; Ruff, formatting, and uv lock checks passed.
+Evidence:
+- v0.1.4 was installed from PyPI; `luvix --version` reported 0.1.4 and Apple HDR backend was ready on macOS.
+- B1/B2 implementation added on `feature/batch-workflows`; verification pending.
 
 Next action:
-1. Apply v0.1.4 release-prep updates, run public fixture/native integration tests, and visually smoke-test the JPEG-derived PQ TIFF in Photoshop if not already done.
-2. Run Ruff, formatting, pytest, lock, build, Twine, and wheel-resource checks.
-3. Commit/push `feature/apple-jpeg`, run GitHub CI, merge to `main`, tag/release v0.1.4, and verify PyPI plus an installed-package smoke test.
-4. Advance the ledger to **v0.1.5 / B1 — batch input discovery and contract**.
+1. Run Ruff/pytest and batch extraction on sanitized Apple HEIC/JPEG fixtures.
+2. Record B1/B2 evidence and close completed acceptance items.
+3. Proceed to B3 (batch 32-bit linear TIFF), then B4 (PQ16), B5 (rebuild/validate), B6 (reporting/reliability).
+4. Complete R1.5 release gate, publish to GitHub/PyPI and verify installed CLI.
 
-Blockers: none known. The external P3 PQ ICC used for validation must not be committed or packaged.
+Blockers: none known. Existing PQ ICC remains external and must not be redistributed.
 
 ## Supported today
 

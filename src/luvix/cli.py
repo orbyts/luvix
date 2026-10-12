@@ -230,3 +230,46 @@ def export_tiff(
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(json.dumps(report, indent=2, sort_keys=True))
+
+
+# Batch orchestration deliberately reuses the native single-image operation.
+batch_app = typer.Typer(help="Process collections of Apple HDR HEIC/JPEG images")
+app.add_typer(batch_app, name="batch")
+
+
+@batch_app.command("extract")
+def batch_extract(
+    inputs: Annotated[list[Path], typer.Argument(help="Input files and/or directories")],
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    recursive: Annotated[
+        bool, typer.Option("--recursive", help="Search directories recursively")
+    ] = False,
+    fail_fast: Annotated[
+        bool, typer.Option("--fail-fast", help="Stop after first extraction failure")
+    ] = False,
+    as_json: Annotated[bool, typer.Option("--json", help="Emit machine-readable summary")] = False,
+) -> None:
+    """Extract upright base/gain-map/manifest sets from multiple images."""
+    from luvix.batch.discovery import BatchInputError, discover
+    from luvix.batch.extract import extract_many
+
+    try:
+        items = discover(inputs, recursive=recursive)
+    except BatchInputError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    report = extract_many(items, output, backend=run_backend, continue_on_error=not fail_fast)
+    if as_json:
+        typer.echo(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        for row in report["results"]:
+            label = "OK" if row["status"] == "ok" else "FAILED"
+            typer.echo(f"{label}: {row['source']} -> {row['output']}")
+            if "error" in row:
+                typer.echo(f"  {row['error']}", err=True)
+        typer.echo(
+            f"Processed {report['processed']}/{report['total']}: "
+            f"{report['succeeded']} succeeded, {report['failed']} failed"
+        )
+    if report["failed"]:
+        raise typer.Exit(1)
