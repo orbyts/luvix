@@ -125,7 +125,7 @@ def inspect(
         bool, typer.Option("--compact", help="Emit single-line JSON for scripts.")
     ] = False,
 ) -> None:
-    """Inspect Apple HEIC HDR base and gain-map layout (macOS)."""
+    """Inspect Apple HEIC/JPEG HDR base and gain-map layout (macOS)."""
     try:
         typer.echo(_render_json(_native("inspect", str(source)), compact=compact))
     except BackendError as exc:
@@ -135,7 +135,7 @@ def inspect(
 
 @app.command()
 def extract(source: Path, output: Annotated[Path, typer.Option("--output", "-o")]) -> None:
-    """Extract editable base.png, gainmap.png and manifest.json."""
+    """Extract upright editable base.png, gainmap.png and manifest.json."""
     typer.echo(_native("extract", str(source), str(output)))
 
 
@@ -146,7 +146,7 @@ def rebuild(
     base: Annotated[Path | None, typer.Option("--base")] = None,
     gainmap: Annotated[Path | None, typer.Option("--gainmap")] = None,
 ) -> None:
-    """Rebuild Apple HDR HEIC, replacing either or both components."""
+    """Rebuild Apple HDR HEIC/JPEG, replacing either or both components."""
     if base is None and gainmap is None:
         typer.echo("Error: specify --base and/or --gainmap", err=True)
         raise typer.Exit(2)

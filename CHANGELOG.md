@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.4] - 2026-10-12
+
+### Added
+- Apple iPhone HDR gain-map JPEG support across inspection, HDR probing, extraction, rebuild, validation, and TIFF export.
+- Sanitized real iPhone HEIC/JPEG fixtures for macOS integration coverage.
+- Upright, spatially aligned component extraction with source/editing geometry recorded in the manifest.
+- Internal full-resolution HDR fidelity metrics for regression analysis; these metrics do not gate user edits.
+
+### Changed
+- Rebuild is container-aware: HEIC sources rebuild as HEIC and JPEG sources as JPEG.
+- Rebuild reverses extraction orientation normalization and restores source orientation metadata.
+- Component edit validation is intentionally limited to structural geometry and decodability; Luvix does not police artistic, exposure, color, or same-geometry pixel edits.
+- Native backend errors no longer duplicate the CLI `Error:` prefix.
+
+### Validated
+- Real orientation-6 HEIC and JPEG captures extract to upright 4284x5712 bases and 2142x2856 gain maps, then rebuild to the original 5712x4284 / 2856x2142 raw geometry with orientation 6.
+- JPEG-derived 32-bit linear HDR TIFF export preserves source orientation and embeds the matching tested linear profile.
+- JPEG-derived 16-bit PQ TIFF export writes 16-bit RGB, orientation 6, and a supplied compatible `P3 PQ` ICC profile.
+- HEIC rebuild regression remains structurally valid with Display P3 and orientation preserved.
+
+### Notes
+- Luvix does not redistribute the external Adobe-compatible P3 PQ ICC used during validation.
+- HEIC/JPEG rebuilds are lossy container encodes; internal fidelity measurements characterize Luvix-induced differences but are not user-edit acceptance criteria.
+- v0.1.5 is planned for batch Apple HDR extraction, conversion, rebuild, and validation.
+
 ## [0.1.3] - 2026-10-11
 
 ### Added

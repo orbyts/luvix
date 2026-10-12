@@ -2,7 +2,7 @@
 
 Luvix is a command-line utility for inspecting HDR gain-map photographs, extracting their components, rebuilding edited Apple HDR captures, and exporting HDR TIFFs for image editing.
 
-> **Current support (v0.1.2):** Apple gain-map HEIC on macOS. Not every HEIC has a gain map. Apple JPEG gain maps, ISO 21496-1, Ultra HDR, and arbitrary color-space conversions are future work.
+> **Current support (v0.1.4):** Apple iPhone gain-map HEIC and JPEG on macOS. Not every HEIC/JPEG contains an HDR gain map. ISO 21496-1 / Ultra HDR and arbitrary color-space conversions remain future interoperability work.
 
 ## Requirements
 
@@ -70,7 +70,9 @@ Luvix does not modify the original capture. Keep it available for rebuilding edi
 
 ```bash
 luvix inspect ~/Pictures/photo.HEIC
+luvix inspect ~/Pictures/photo.JPG
 luvix inspect-hdr ~/Pictures/photo.HEIC --samples 16
+luvix inspect-hdr ~/Pictures/photo.JPG --samples 16
 ```
 
 `inspect` reports stored image dimensions, orientation, working color space, and gain-map layout. `inspect-hdr` is a diagnostic comparison of Apple's SDR and HDR decoding paths. For command-specific options:
@@ -87,7 +89,9 @@ luvix extract ~/Pictures/photo.HEIC \
   --output ~/Pictures/luvix-work/photo
 ```
 
-The extraction creates `base.png`, `gainmap.png`, and `manifest.json`. The PNGs can be in **raw pixel orientation**, which may differ from how Photos or Photoshop displays the capture. Keep the source HEIC and manifest. A gain-map preview PNG is not a substitute for the original gain-map metadata.
+The extraction creates `base.png`, `gainmap.png`, and `manifest.json`. Luvix applies the source EXIF orientation to **both** component PNGs so they are upright and spatially aligned for editing. The manifest records the source orientation plus raw and editing geometry. Keep the original HEIC/JPEG and manifest. A gain-map preview PNG is not a substitute for the original gain-map metadata.
+
+Rebuild deliberately performs only simple structural checks: supplied components must decode and retain the expected editing dimensions. Luvix does not judge exposure, color, pixel, or other same-geometry edits. A base or gain map rotated/resized independently so that its geometry no longer matches is rejected. Same-canvas transforms that dimensions cannot reveal remain the user's responsibility.
 
 ## Rebuild an edited capture
 
@@ -119,7 +123,7 @@ luvix rebuild \
   --output ~/Pictures/luvix-work/rebuilt.HEIC
 ```
 
-Validate the rebuilt HEIC:
+Use a matching output container: HEIC sources rebuild to `.heic`; JPEG sources rebuild to `.jpg`/`.jpeg`. Validate the rebuilt image:
 
 ```bash
 luvix validate \
@@ -127,7 +131,7 @@ luvix validate \
   --output ~/Pictures/luvix-work/rebuilt.HEIC
 ```
 
-**Validation scope:** structural HDR checks, not pixel-perfect identity or visual equivalence. HEIC re-encoding can be lossy. If an editor changes a 5712×4284 raw raster into a 4284×5712 upright raster, the current rebuild may reject it. Do not resample merely to satisfy dimensions. Orientation-aware rebuild remains on the roadmap.
+**Validation scope:** structural HDR checks, not pixel-perfect identity or visual equivalence. HEIC/JPEG re-encoding can be lossy. Extraction already produces upright editing components; do not rotate or resize only one component. Rebuild reverses the extraction orientation transform and restores the source orientation metadata.
 
 ## Export a 32-bit linear HDR TIFF
 
@@ -196,4 +200,4 @@ uv run pytest -q
 uv run ruff check .
 ```
 
-For feature requests, current support boundaries, and planned interoperability with Apple JPEG gain maps, ISO 21496-1, libultrahdr, libvips, and ImageMagick, see `ROADMAP.md`.
+For feature requests, current support boundaries, and planned batch workflows and interoperability with ISO 21496-1, libultrahdr, libvips, and ImageMagick, see `ROADMAP.md`.

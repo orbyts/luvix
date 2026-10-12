@@ -8,7 +8,7 @@ If priorities change, update this roadmap first.
 
 ## Vision
 
-Luvix is a format-independent HDR and gain-map utility: a Swiss Army knife for inspecting, splitting, reconstructing, generating, validating, and converting HDR image representations.
+Luvix is an HDR interoperability toolkit for photographers: a Swiss Army knife for inspecting, splitting, reconstructing, generating, validating, and converting HDR/gain-map representations when capture and editing applications do not exchange them correctly. It bridges representations without replacing the professional editor or duplicating workflows already handled correctly by existing tools.
 
 The long-term goal is a common workflow above native and third-party imaging backends such as Apple ImageIO/Core Image, libvips, and libultrahdr.
 
@@ -19,38 +19,33 @@ gain-map image -> components -> reconstructed HDR -> editable raster
 SDR + HDR -> generated gain map -> gain-map image
 ```
 
-The public CLI should describe operations rather than backend implementation details.
+The public CLI should describe operations rather than backend implementation details. Luvix is not a general-purpose RAW developer or photo editor. RAW/DNG interoperability is considered only if a specific, demonstrated HDR compatibility gap warrants it; speculative RAW ingestion is not a roadmap milestone.
 
 ## Current position
 
-Release: **v0.1.3**
+Release: **v0.1.4 (release candidate)**
 
-Theme: Apple-native HDR foundation and CLI polish.
+Theme: Apple iPhone HDR gain-map interoperability across HEIC and JPEG.
 
-Active slice: **R1.3 — release**
+Active slice: **R1.4 — release validation**.
 
-Evidence:
-- Pretty JSON is the default for `inspect` and `inspect-hdr`.
-- `--compact` provides single-line JSON for scripting.
-- `doctor` probes Swift/Xcode readiness.
-- Apple HDR backend reports ready on the validated macOS environment.
-- Xcode-license/toolchain failures receive actionable diagnostics.
-- 61 automated tests pass.
-- Ruff and formatting checks pass.
-- uv lockfile resolves successfully.
-- This roadmap is now the shared engineering ledger.
+Verified evidence (through 2026-10-12):
+- Genuine iPhone 16 Pro HEIC/JPEG HDR gain-map captures characterized; sanitized public candidates retain L008 gain maps, Display P3, orientation 6, and distinct SDR/HDR ImageIO decodes.
+- HEIC and JPEG inspect, inspect-hdr, extraction, rebuild, validation, and 32-bit linear TIFF paths work on the real fixtures.
+- Extraction normalizes orientation 6 into upright 4284x5712 base and 2142x2856 gain-map PNGs; rebuild restores 5712x4284 / 2856x2142 raw geometry and orientation 6.
+- Geometry mismatch is rejected; semantic/color/exposure edits are intentionally not policed.
+- JPEG-derived 16-bit PQ TIFF writes 16-bit RGB, orientation 6, and a supplied compatible `P3 PQ` ICC.
+- HEIC rebuild regression validates structurally with Display P3 and orientation preserved.
+- Internal fidelity baselines exist for lossy rebuild regression, but fidelity does not gate user edits.
+- 71 automated tests passed after orientation/geometry implementation; Ruff, formatting, and uv lock checks passed.
 
 Next action:
-1. Finalize v0.1.3 changelog.
-2. Run release validation.
-3. Commit and push `feature/cli-polish`.
-4. Run GitHub CI and merge to `main`.
-5. Publish GitHub v0.1.3 release.
-6. Verify Trusted Publishing to PyPI.
-7. Install/upgrade from PyPI and smoke-test the installed CLI.
-8. Begin **v0.1.4 / A1 — Apple JPEG discovery**.
+1. Apply v0.1.4 release-prep updates, run public fixture/native integration tests, and visually smoke-test the JPEG-derived PQ TIFF in Photoshop if not already done.
+2. Run Ruff, formatting, pytest, lock, build, Twine, and wheel-resource checks.
+3. Commit/push `feature/apple-jpeg`, run GitHub CI, merge to `main`, tag/release v0.1.4, and verify PyPI plus an installed-package smoke test.
+4. Advance the ledger to **v0.1.5 / B1 — batch input discovery and contract**.
 
-Blockers: none known.
+Blockers: none known. The external P3 PQ ICC used for validation must not be committed or packaged.
 
 ## Supported today
 
@@ -135,65 +130,109 @@ Established installed-CLI documentation, PyPI quick start, functional `doctor` r
 - [x] Decision log and progress protocol defined.
 
 ### R1.3 — Release
-- [ ] CHANGELOG documents v0.1.3.
-- [ ] Local release checks pass.
-- [ ] Distribution builds and metadata validation pass.
-- [ ] Swift resources are present in the wheel.
-- [ ] GitHub CI passes.
-- [ ] Changes merge into `main`.
-- [ ] GitHub v0.1.3 release published.
-- [ ] PyPI reports `luvix==0.1.3`.
-- [ ] Installed PyPI CLI passes version/doctor/native smoke tests.
+Status: released. GitHub PR #5 merged with 12 passing checks; installed PyPI v0.1.3 verified on macOS with `doctor`, HEIC `inspect`, and `inspect --compact`.
+
+- [x] CHANGELOG documents v0.1.3.
+- [x] Local release checks passed (61 tests, Ruff, lock).
+- [x] GitHub CI passed and changes merged into `main`.
+- [x] GitHub v0.1.3 release and PyPI installation verified by installed CLI.
+
+Evidence note: artifact build metadata and wheel-resource verification for this particular release were not independently supplied in this conversation; do not infer them from the successful installed smoke test.
 
 ## v0.1.4 — Apple JPEG gain maps
 
-Theme: complete the Apple-native 0.1.x foundation across Apple's gain-map containers before introducing generalized third-party backends.
+Theme: complete the Apple-native 0.1.x foundation across Apple's HEIC/JPEG gain-map containers.
 
 ### A1 — Apple JPEG discovery
-Status: next after v0.1.3.
-
-Acceptance:
-- [ ] Obtain/create at least one verified Apple JPEG gain-map fixture.
-- [ ] Document `CGImageSource`/auxiliary-image structure.
-- [ ] Record base/gain-map dimensions, format, metadata, ICC, orientation and headroom.
-- [ ] Compare HDR-aware decode behavior with HEIC.
-- [ ] Keep private fixtures out of the public repository.
+- [x] Genuine iPhone HEIC/JPEG gain-map fixtures obtained and sanitized for public regression use.
+- [x] JPEG ImageIO auxiliary layout characterized: L008 2856x2142; HEIC comparison L008 2856x2142.
+- [x] Display P3, orientation 6, and distinct SDR/HDR decode behavior verified.
+- [x] Queried GPS/capture-time metadata removed from public fixture candidates; private originals remain ignored.
 
 ### A2 — Apple JPEG inspection
-- [ ] `luvix inspect` recognizes supported Apple JPEG gain maps.
-- [ ] `inspect-hdr` performs the HDR decode probe.
-- [ ] Ordinary unsupported JPEGs fail clearly.
-- [ ] Public/synthetic tests cover detection.
+- [x] `inspect` recognizes the real Apple JPEG gain map.
+- [x] `inspect-hdr` produces distinct SDR/HDR renders with extended-linear values above 1.0.
+- [x] Public fixture integration coverage is included for macOS.
 
 ### A3 — Apple JPEG extraction
-- [ ] Extract editable SDR base and gain map.
-- [ ] Write a deterministic rebuild manifest.
-- [ ] Preserve required source metadata.
+- [x] Extract editable SDR base and gain map.
+- [x] Manifest records source orientation and editing geometry.
+- [x] Base and gain map are exported in the same upright editing orientation.
 
-### A4 — Apple JPEG rebuild
-- [ ] Base-only edit.
-- [ ] Gain-map-only edit.
-- [ ] Both edited.
-- [ ] Validate dimensions/orientation.
-- [ ] Never silently resample or rotate.
+### A4 — JPEG/HEIC rebuild and geometry contract
+- [x] Container-aware JPEG rebuild implemented; output is genuine JPEG with readable HDR gain map.
+- [x] HEIC rebuild regression remains valid.
+- [x] Rebuild checks supplied component dimensions/decodability and reverses orientation normalization.
+- [x] Real orientation-6 JPEG and HEIC extract -> rebuild -> validate tests passed.
+- [x] Independently rotated/resized component geometry is rejected.
+- [x] Same-geometry artistic/color/exposure/pixel edits are intentionally the user's responsibility.
+- [x] Full-resolution HDR fidelity baseline retained as internal engineering evidence only.
+- [ ] Avoiding unnecessary compressed-base re-encoding remains a future optimization, not a v0.1.4 blocker.
 
 ### A5 — HDR reconstruction and TIFF export
-- [ ] Reconstruct into the shared linear representation.
-- [ ] 32-bit linear TIFF matches the HEIC workflow.
-- [ ] 16-bit PQ uses the same color-management contract.
-- [ ] Numerical comparison against reference HDR decode is within tolerance.
+- [x] JPEG HDR reconstruction produces extended-linear Display P3 values above 1.0.
+- [x] JPEG -> 32-bit linear TIFF writes embedded ICC and source orientation metadata.
+- [x] JPEG -> 16-bit PQ TIFF writes 16-bit RGB, source orientation, and supplied compatible P3 PQ ICC.
+- [x] Existing HEIC 32-bit linear and 16-bit PQ paths remain covered by the 0.1.x regression suite.
+- [ ] Final Photoshop visual smoke check for the JPEG-derived PQ TIFF, if not already completed.
 
 ### A6 — Apple backend cleanup
-- [ ] Move container-specific decisions behind the Apple backend.
-- [ ] Preserve existing HEIC behavior.
-- [ ] Define supported/unsupported Apple gain-map variants.
+- [x] HEIC/JPEG destination selection is encapsulated in the Apple ImageIO backend.
+- [x] Existing HEIC behavior is preserved by regression validation.
+- [x] Current supported Apple gain-map contract is explicit: ImageIO-readable HEIC/JPEG with Apple HDR auxiliary gain map; tested fixtures use L008 and Display P3.
 
 ### R1.4 — Release
-- [ ] HEIC regression suite passes.
-- [ ] Apple JPEG integration suite passes.
-- [ ] Documentation updated.
-- [ ] GitHub CI passes.
-- [ ] PyPI installation smoke test passes.
+Status: active.
+
+- [ ] Public sanitized HEIC/JPEG fixtures committed with fixture documentation.
+- [ ] Native macOS fixture integration tests pass from the committed checkout.
+- [ ] README, user guide, changelog, and roadmap reflect v0.1.4 behavior.
+- [ ] Ruff, format, pytest, and `uv lock --check` pass.
+- [ ] sdist/wheel build and Twine metadata checks pass.
+- [ ] All required Swift backend resources are present in the wheel.
+- [ ] Proprietary/reference ICC files are absent from Git and distributions.
+- [ ] GitHub CI passes and changes merge into `main`.
+- [ ] GitHub v0.1.4 release publishes successfully to PyPI.
+- [ ] Installed PyPI v0.1.4 passes version, doctor, HEIC/JPEG inspect, extraction/rebuild, and TIFF smoke tests.
+
+## v0.1.5 — Batch Apple HDR workflows
+
+Theme: apply the established single-image Apple HEIC/JPEG interoperability operations to collections, without changing HDR/color algorithms.
+
+### B1 — Input discovery and batch contract
+- [ ] Support explicit files and directory inputs; define recursion, extension filtering, and unsupported-file policy.
+- [ ] Deterministic output naming and directory layout; refuse overwrite by default.
+- [ ] Document planned CLI syntax before implementation.
+
+### B2 — Batch component extraction
+- [ ] Extract SDR base, gain map, and manifest per supported image.
+- [ ] Isolate per-file errors; continue when configured.
+- [ ] Preserve the single-image extraction and metadata contracts.
+
+### B3 — Batch 32-bit linear HDR TIFF conversion
+- [ ] Export 32-bit float TIFF for HEIC and JPEG sources.
+- [ ] Preserve per-file orientation, color interpretation, and ICC behavior.
+- [ ] Verify output metadata and numerical values against single-image export.
+
+### B4 — Batch 16-bit PQ TIFF conversion
+- [ ] Support explicit reference white and compatible PQ ICC configuration.
+- [ ] Validate color-space/profile compatibility per input; fail safely when mismatched.
+- [ ] Verify parity with single-image PQ output.
+
+### B5 — Batch rebuild and validation
+- [ ] Define safe source/component pairing and manifest discovery.
+- [ ] Rebuild supported Apple gain-map images without cross-pairing components.
+- [ ] Validate structure and record per-file results.
+
+### B6 — Reporting and reliability
+- [ ] Human-readable progress and machine-readable JSON summary.
+- [ ] Deterministic success/failure exit semantics.
+- [ ] Tests for empty inputs, mixed formats, collisions, interrupted runs, and partial failures.
+
+### R1.5 — Release
+- [ ] Batch integration tests pass with HEIC and JPEG fixtures.
+- [ ] User guide documents batch commands and output layout.
+- [ ] CI, package build, and independent installed-PyPI smoke test pass.
 
 ## v0.2.x — Generalized HDR and gain-map engine
 
@@ -294,12 +333,12 @@ Acceptance:
 
 ### P3.1 — Multichannel/color gain maps
 ### P3.2 — Registration and alignment
-### P3.3 — Batch workflows
+### P3.3 — Advanced batch orchestration
 ### P3.4 — Fidelity and validation
 ### P3.5 — Performance
 ### P3.6 — Distribution and Homebrew
 
-Detailed goals include per-channel gain preservation, SDR/HDR alignment, deterministic batch processing, stronger numerical/perceptual validation, reduced full-frame copies, parallelism where safe, a Homebrew tap, and evaluation of precompiled native components.
+Detailed goals include per-channel gain preservation, SDR/HDR alignment, advanced cross-backend batch orchestration beyond v0.1.5, stronger numerical/perceptual validation, reduced full-frame copies, parallelism where safe, a Homebrew tap, and evaluation of precompiled native components.
 
 ## 1.0 direction
 
@@ -320,6 +359,19 @@ Luvix 1.0 should provide a stable documented CLI for:
 The exact 1.0 format matrix will be determined by evidence gathered through 0.x releases.
 
 ## Backlog
+
+### Conditional research — camera-neutral scene-linear interchange
+
+**Status:** unscheduled feasibility backlog; not part of v0.1.4, v0.1.5, or committed v0.2.x scope.
+
+An independent RAW/film-simulation research project will test whether standardized, camera-characterized, scene-referred RGB intermediates (candidate: half-float or float32 OpenEXR) can be produced reproducibly from different camera sources. The useful output format, color space, exposure normalization and precision must be determined empirically. Luvix may later accept or emit such a representation **only where it solves a demonstrated HDR interoperability gap**. This does not authorize RAW demosaicing, general RAW development, or film simulation inside Luvix.
+
+Decision gate before promotion into an active release:
+- [ ] Independent research identifies a concrete downstream interchange problem not adequately solved by existing tools.
+- [ ] Candidate intermediate(s) and color/metadata contract are documented and numerically validated.
+- [ ] Scope remains an HDR/interchange adapter, not a RAW development engine.
+- [ ] Release assignment, acceptance criteria and tests are approved and recorded here.
+
 
 - HLG-specific workflows.
 - AVIF/JXL and other HDR containers when ecosystem support warrants.
@@ -343,6 +395,7 @@ Backlog items do not override the active release.
 - Keep libvips/libultrahdr optional for Apple workflows unless explicitly changed.
 - Never assume all gain maps are monochrome.
 - Never assume all HDR images use Display P3.
+- Do not implement RAW development, demosaicing, lens corrections, or general retouching; evaluate RAW/DNG only if a specific HDR interoperability problem is demonstrated.
 - A milestone is not complete until verification evidence exists.
 
 ## Decision log
@@ -360,6 +413,15 @@ Backlog items do not override the active release.
 - **2026-10-11:** Keep the 0.1.x line focused on Apple-native source formats.
 - **2026-10-11:** Make v0.2.x the generalized libvips/libultrahdr/color/gain-map-generation phase.
 - **2026-10-11:** Preserve future bidirectional workflows: gain-map -> HDR and SDR+HDR -> gain map.
+
+- **2026-10-11:** Define Luvix by HDR interoperability rather than RAW development or general photo editing; investigate RAW/DNG only when a concrete compatibility gap is found.
+- **2026-10-11:** Add v0.1.5 for batch Apple HEIC/JPEG extraction, TIFF conversion, rebuild, and validation.
+- **2026-10-11:** Record real iPhone HEIC/JPEG discovery evidence; keep private originals excluded and audit sanitized public fixture candidates before committing.
+
+- **2026-10-12:** Record camera-neutral scene-linear EXR (half/full float) as a conditional, unscheduled interoperability feasibility item; keep RAW normalization and AI film research separate pending evidence.
+- **2026-10-12:** Define v0.1.4 rebuild validation as a simple geometry/decodability contract; semantic image edits remain the user's responsibility.
+- **2026-10-12:** Normalize extracted base and gain map to the same upright editing orientation and reverse that transform on rebuild.
+- **2026-10-12:** Keep HDR fidelity metrics as internal regression evidence rather than a user rebuild gate.
 
 ## Progress protocol
 
