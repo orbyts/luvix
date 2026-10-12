@@ -336,3 +336,64 @@ def batch_export_tiff(
         typer.echo(f"{report['succeeded']} succeeded; {report['failed']} failed")
     if report["failed"]:
         raise typer.Exit(1)
+
+
+def _batch_rebuild_report(report: dict, *, as_json: bool) -> None:
+    """Render batch result without mixing machine output and progress messages."""
+    if as_json:
+        typer.echo(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        for row in report["results"]:
+            typer.echo(f"{row['status'].upper()}: {row['source']} -> {row['output']}")
+            if "error" in row:
+                typer.echo(f"  {row['error']}", err=True)
+        typer.echo(
+            f"Processed {report['processed']}/{report['total']}: "
+            f"{report['succeeded']} succeeded, {report['failed']} failed"
+        )
+    if report["failed"]:
+        raise typer.Exit(1)
+
+
+@batch_app.command("rebuild")
+def batch_rebuild(
+    extracted: Annotated[Path, typer.Argument(help="Directory of extracted component sets")],
+    sources: Annotated[Path, typer.Option("--sources", help="Original HEIC/JPEG directory")],
+    output: Annotated[Path, typer.Option("--output", "-o")],
+    recursive: Annotated[bool, typer.Option("--recursive")] = False,
+    fail_fast: Annotated[bool, typer.Option("--fail-fast")] = False,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Rebuild HDR HEIC/JPEG from matching component directories and originals."""
+    from luvix.batch.rebuild import BatchPairingError, discover_pairs, rebuild_many
+
+    try:
+        pairs = discover_pairs(extracted, sources, recursive=recursive)
+    except BatchPairingError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    report = rebuild_many(pairs, output, backend=run_backend, continue_on_error=not fail_fast)
+    _batch_rebuild_report(report, as_json=as_json)
+
+
+@batch_app.command("validate")
+def batch_validate(
+    rebuilt: Annotated[Path, typer.Argument(help="Directory containing rebuilt images")],
+    sources: Annotated[Path, typer.Option("--sources", help="Original HEIC/JPEG directory")],
+    extracted: Annotated[
+        Path, typer.Option("--extracted", help="Component directory with source manifests")
+    ],
+    recursive: Annotated[bool, typer.Option("--recursive")] = False,
+    fail_fast: Annotated[bool, typer.Option("--fail-fast")] = False,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Validate rebuilt Apple HDR images against manifest-matched originals."""
+    from luvix.batch.rebuild import BatchPairingError, discover_pairs, validate_many
+
+    try:
+        pairs = discover_pairs(extracted, sources, recursive=recursive)
+    except BatchPairingError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    report = validate_many(pairs, rebuilt, backend=run_backend, continue_on_error=not fail_fast)
+    _batch_rebuild_report(report, as_json=as_json)

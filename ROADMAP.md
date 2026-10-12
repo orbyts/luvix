@@ -27,16 +27,18 @@ Release: **v0.1.5 (development)**
 
 Theme: Batch Apple HDR HEIC/JPEG workflows; reuse validated single-image operations.
 
-Active slice: **B1/B2 — discovery and component extraction implementation validation**.
+Active slice: **B5/B6 — batch rebuild, validation, and reporting verification**.
 
 Evidence:
 - v0.1.4 was installed from PyPI; `luvix --version` reported 0.1.4 and Apple HDR backend was ready on macOS.
-- B1/B2 implementation added on `feature/batch-workflows`; verification pending.
+- B1/B2 committed as 609f41f; 15/15 sanitized HEIC/JPEG fixture extractions passed.
+- B3/B4 committed as 3d6d559; 15/15 linear32 and 15/15 PQ16 TIFF exports passed.
+- B5/B6 implementation candidate added; native 15-image rebuild/validate pending.
 
 Next action:
-1. Run Ruff/pytest and batch extraction on sanitized Apple HEIC/JPEG fixtures.
-2. Record B1/B2 evidence and close completed acceptance items.
-3. Proceed to B3 (batch 32-bit linear TIFF), then B4 (PQ16), B5 (rebuild/validate), B6 (reporting/reliability).
+1. Validate B5/B6 with Ruff, pytest and the 15-image native batch rebuild/validate round trip.
+2. Record measured evidence, review failure handling and close B5/B6.
+3. Prepare R1.5 documentation, packaging and release checks.
 4. Complete R1.5 release gate, publish to GitHub/PyPI and verify installed CLI.
 
 Blockers: none known. Existing PQ ICC remains external and must not be redistributed.
