@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.5] - 2026-10-12
+
+### Added
+- Batch input discovery for mixed Apple HDR HEIC/JPEG files and directories, with optional recursion.
+- Batch upright base/gain-map/manifest extraction into one directory per source.
+- Batch 32-bit linear and 16-bit PQ TIFF export using the existing single-image HDR engine.
+- Batch manifest-paired HEIC/JPEG rebuilding and structural validation.
+- Per-file results, JSON summaries, fail-fast option, and overwrite protection.
+- Fifteen sanitized real iPhone fixtures spanning HEIC/JPEG and EXIF orientations 1 and 6.
+
+### Fixed
+- Batch rebuild now creates its output directory before writing files.
+
+### Validated
+- 15/15 fixture inspections and extractions.
+- 15/15 32-bit linear and 15/15 16-bit PQ TIFF exports with matching ICC and orientation metadata.
+- 15/15 rebuilt images and 15/15 structural validations; output-directory creation verified.
+- 86 automated tests, Ruff, formatting, and lockfile checks passed before release preparation.
+
+### Notes
+- The tested tagged PQ workflow still requires an external compatible ICC profile.
+- No HDR reconstruction, PQ math, or TIFF encoding algorithms were changed.
+
+
 ## [0.1.4] - 2026-10-12
 
 ### Added
@@ -23,7 +47,7 @@
 ### Notes
 - Luvix does not redistribute the external Adobe-compatible P3 PQ ICC used during validation.
 - HEIC/JPEG rebuilds are lossy container encodes; internal fidelity measurements characterize Luvix-induced differences but are not user-edit acceptance criteria.
-- v0.1.5 is planned for batch Apple HDR extraction, conversion, rebuild, and validation.
+- Batch Apple HDR workflows shipped in v0.1.5.
 
 ## [0.1.3] - 2026-10-11
 

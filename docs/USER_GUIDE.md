@@ -2,7 +2,7 @@
 
 Luvix is a command-line utility for inspecting HDR gain-map photographs, extracting their components, rebuilding edited Apple HDR captures, and exporting HDR TIFFs for image editing.
 
-> **Current support (v0.1.4):** Apple iPhone gain-map HEIC and JPEG on macOS. Not every HEIC/JPEG contains an HDR gain map. ISO 21496-1 / Ultra HDR and arbitrary color-space conversions remain future interoperability work.
+> **Current support (v0.1.5):** Apple iPhone gain-map HEIC and JPEG on macOS. Not every HEIC/JPEG contains an HDR gain map. ISO 21496-1 / Ultra HDR and arbitrary color-space conversions remain future interoperability work.
 
 ## Requirements
 
@@ -186,6 +186,36 @@ For the validated 32-bit P3 export, expect three 32-bit floating-point channels,
 | Unsupported color profile | The source working-space implementation is currently limited. |
 | Swift compilation fails | Check `swiftc --version` and Xcode Command Line Tools. |
 | Output file already exists | Choose a new output filename; Luvix refuses to overwrite existing outputs. |
+
+## Batch processing (v0.1.5)
+
+Batch mode processes supported Apple HDR HEIC/JPEG files sequentially. It accepts a directory or explicit files for extraction and TIFF export; add `--recursive` for nested directories. Files that are not supported HDR gain-map images produce per-file failures. Use `--json` for machine-readable per-file results, and `--fail-fast` to stop after the first processing failure. Failed batches exit nonzero. Existing outputs are never overwritten.
+
+### Batch extraction
+
+```bash
+luvix batch extract ~/Pictures/iPhone --output ~/Pictures/Extracted --json
+```
+
+Each image receives its own directory, such as `Extracted/IMG_9203.HEIC/`, containing upright `base.png`, upright `gainmap.png`, and `manifest.json`. Preserve the manifest and original source files for rebuilding.
+
+### Batch TIFF export
+
+```bash
+luvix batch export tiff ~/Pictures/iPhone --bit-depth 32 --transfer linear --color-space source --output ~/Pictures/Linear32 --json
+luvix batch export tiff ~/Pictures/iPhone --bit-depth 16 --transfer pq --color-space source --reference-white 203 --icc-profile ~/ColorProfiles/P3_PQ.icc --output ~/Pictures/PQ16 --json
+```
+
+The tagged 16-bit PQ path needs an external ICC compatible with the source primaries and PQ transfer. Luvix does not bundle Adobe's reference profile. Source orientation is preserved in the exported TIFF metadata. Batch naming includes the source extension to avoid collisions between similarly named HEIC and JPEG inputs.
+
+### Batch rebuild and validation
+
+```bash
+luvix batch rebuild ~/Pictures/Extracted --sources ~/Pictures/iPhone --output ~/Pictures/Rebuilt --json
+luvix batch validate ~/Pictures/Rebuilt --sources ~/Pictures/iPhone --extracted ~/Pictures/Extracted --json
+```
+
+Source/component pairing uses the extraction manifest and refuses ambiguous matches. Rebuild requires compatible component dimensions and decodability, not pixel similarity. The output directory is created automatically. Rebuilding HEIC/JPEG is a lossy encoding operation.
 
 ## Developer workflow
 

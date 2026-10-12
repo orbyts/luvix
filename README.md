@@ -8,11 +8,11 @@ For example, an iPhone photo can contain an SDR base and an HDR gain map. Luvix 
 
 ## Current support
 
-**v0.1.4 release candidate:** Apple iPhone gain-map HEIC and JPEG on macOS using ImageIO/Core Image and Swift. `inspect`, `inspect-hdr`, upright component `extract`, geometry-checked `rebuild`, `validate`, and `export tiff` are exercised with real sanitized iPhone fixtures. The 32-bit floating-point linear TIFF path uses a matching linear ICC profile. The 16-bit PQ path accepts an externally supplied compatible PQ ICC profile; Luvix does not redistribute the Adobe reference profile used during validation.
+**v0.1.5:** Apple iPhone gain-map HEIC and JPEG on macOS using ImageIO/Core Image and Swift. `inspect`, `inspect-hdr`, upright component `extract`, geometry-checked `rebuild`, `validate`, and `export tiff` are exercised with real sanitized iPhone fixtures. The 32-bit floating-point linear TIFF path uses a matching linear ICC profile. The 16-bit PQ path accepts an externally supplied compatible PQ ICC profile; Luvix does not redistribute the Adobe reference profile used during validation.
 
 Extraction normalizes the SDR base and gain map into the same upright editing orientation. Rebuild checks only structural geometry and decodability, reverses that orientation normalization, and restores the source orientation. Pixel, color, exposure, and other same-geometry edits are intentionally the user's responsibility.
 
-**Planned for v0.1.5:** Batch Apple HEIC/JPEG extraction, HDR TIFF conversion, rebuild, validation, and machine-readable reporting.
+**Batch workflows (v0.1.5):** Mixed Apple HEIC/JPEG input discovery, upright component extraction, 32-bit linear / 16-bit PQ TIFF export, manifest-paired rebuild and structural validation, and per-file JSON reporting. Processing is sequential and never overwrites existing outputs.
 
 Luvix is an interoperability layer, not a RAW developer or general-purpose photo editor. Conventional RAW files should continue through established RAW editing workflows when those tools already handle them correctly. New input formats are added when they address a demonstrated HDR interoperability need.
 
@@ -42,6 +42,20 @@ luvix export tiff ~/Pictures/photo.HEIC \
 ```
 
 For 16-bit PQ output, supply a compatible external PQ ICC and an explicit reference white. See the user guide for the complete workflow and current limitations. Commands that rebuild or convert images should be verified against their output format and color metadata before professional delivery.
+
+## Batch quick start (macOS)
+
+Batch commands accept mixed Apple HDR HEIC/JPEG sources. Output is never overwritten.
+
+```bash
+luvix batch extract ~/Pictures/iPhone --output ~/Pictures/Extracted --json
+luvix batch export tiff ~/Pictures/iPhone --bit-depth 32 --transfer linear --color-space source --output ~/Pictures/Linear32 --json
+luvix batch export tiff ~/Pictures/iPhone --bit-depth 16 --transfer pq --color-space source --reference-white 203 --icc-profile ~/ColorProfiles/P3_PQ.icc --output ~/Pictures/PQ16 --json
+luvix batch rebuild ~/Pictures/Extracted --sources ~/Pictures/iPhone --output ~/Pictures/Rebuilt --json
+luvix batch validate ~/Pictures/Rebuilt --sources ~/Pictures/iPhone --extracted ~/Pictures/Extracted --json
+```
+
+Extraction creates a directory per input image, named with its source extension (for example `IMG_9203.HEIC/base.png`). `--recursive` enables recursive discovery; `--fail-fast` stops after the first per-image failure. A compatible external PQ ICC is required for the tested tagged 16-bit PQ workflow. See the [user guide](docs/USER_GUIDE.md) for details.
 
 ## Editing paths
 

@@ -23,25 +23,28 @@ The public CLI should describe operations rather than backend implementation det
 
 ## Current position
 
-Release: **v0.1.5 (development)**
+Release: **v0.1.5 (release candidate)**
 
-Theme: Batch Apple HDR HEIC/JPEG workflows; reuse validated single-image operations.
+Theme: Batch Apple HDR HEIC/JPEG workflows, reusing validated single-image operations.
 
-Active slice: **B5/B6 — batch rebuild, validation, and reporting verification**.
+Active slice: **R1.5 — Release verification and publication**.
 
 Evidence:
-- v0.1.4 was installed from PyPI; `luvix --version` reported 0.1.4 and Apple HDR backend was ready on macOS.
-- B1/B2 committed as 609f41f; 15/15 sanitized HEIC/JPEG fixture extractions passed.
-- B3/B4 committed as 3d6d559; 15/15 linear32 and 15/15 PQ16 TIFF exports passed.
-- B5/B6 implementation candidate added; native 15-image rebuild/validate pending.
+- v0.1.4 installed from PyPI and Apple HDR backend ready on macOS.
+- B1/B2 commit `609f41f`: 15/15 mixed sanitized HEIC/JPEG fixtures inspected and extracted.
+- B3/B4 commit `3d6d559`: 15/15 linear32 and 15/15 PQ16 TIFF exports, with expected ICC and orientation metadata.
+- B5/B6 commit `17fae6a`: 15/15 native rebuilds and 15/15 structural validations; automatic output directory creation retested successfully.
+- 86 tests passed; Ruff, formatting, `uv lock --check`, build, and Twine passed before version bump (artifacts were still v0.1.4).
+- Public fixture set includes 7 HEIC and 8 JPEG images, EXIF orientations 1 and 6; metadata review found no GPS or serial fields in the checked groups.
 
 Next action:
-1. Validate B5/B6 with Ruff, pytest and the 15-image native batch rebuild/validate round trip.
-2. Record measured evidence, review failure handling and close B5/B6.
-3. Prepare R1.5 documentation, packaging and release checks.
-4. Complete R1.5 release gate, publish to GitHub/PyPI and verify installed CLI.
+1. Apply v0.1.5 documentation and version changes, run `uv lock` and complete final local gates.
+2. Verify wheel Swift resources and absence of proprietary ICC files.
+3. Push feature branch, obtain green GitHub CI, merge to `main`.
+4. Tag/release v0.1.5, verify PyPI Trusted Publishing, then test installed v0.1.5.
+5. Record publication evidence and select the next active slice only after the release succeeds.
 
-Blockers: none known. Existing PQ ICC remains external and must not be redistributed.
+Blockers: no known implementation blockers. Tagged 16-bit PQ requires an external compatible ICC profile.
 
 ## Supported today
 
@@ -196,39 +199,39 @@ Status: active.
 Theme: apply the established single-image Apple HEIC/JPEG interoperability operations to collections, without changing HDR/color algorithms.
 
 ### B1 — Input discovery and batch contract
-- [ ] Support explicit files and directory inputs; define recursion, extension filtering, and unsupported-file policy.
-- [ ] Deterministic output naming and directory layout; refuse overwrite by default.
-- [ ] Document planned CLI syntax before implementation.
+- [x] Support explicit files and directory inputs; define recursion, extension filtering, and unsupported-file policy.
+- [x] Deterministic output naming and directory layout; refuse overwrite by default.
+- [x] Document planned CLI syntax before implementation.
 
 ### B2 — Batch component extraction
-- [ ] Extract SDR base, gain map, and manifest per supported image.
-- [ ] Isolate per-file errors; continue when configured.
-- [ ] Preserve the single-image extraction and metadata contracts.
+- [x] Extract SDR base, gain map, and manifest per supported image.
+- [x] Isolate per-file errors; continue when configured.
+- [x] Preserve the single-image extraction and metadata contracts.
 
 ### B3 — Batch 32-bit linear HDR TIFF conversion
-- [ ] Export 32-bit float TIFF for HEIC and JPEG sources.
-- [ ] Preserve per-file orientation, color interpretation, and ICC behavior.
-- [ ] Verify output metadata and numerical values against single-image export.
+- [x] Export 32-bit float TIFF for HEIC and JPEG sources.
+- [x] Preserve per-file orientation, color interpretation, and ICC behavior.
+- [x] Verify output metadata, source orientation and HDR values above 1.0; exact per-pixel parity against single-image export not separately measured.
 
 ### B4 — Batch 16-bit PQ TIFF conversion
-- [ ] Support explicit reference white and compatible PQ ICC configuration.
-- [ ] Validate color-space/profile compatibility per input; fail safely when mismatched.
-- [ ] Verify parity with single-image PQ output.
+- [x] Support explicit reference white and compatible PQ ICC configuration.
+- [x] Validate color-space/profile compatibility per input; fail safely when mismatched.
+- [x] Verify 15 tagged PQ outputs have correct bit depth, ICC description and orientation; exact pixel parity not separately measured.
 
 ### B5 — Batch rebuild and validation
-- [ ] Define safe source/component pairing and manifest discovery.
-- [ ] Rebuild supported Apple gain-map images without cross-pairing components.
-- [ ] Validate structure and record per-file results.
+- [x] Define safe source/component pairing and manifest discovery.
+- [x] Rebuild supported Apple gain-map images without cross-pairing components.
+- [x] Validate structure and record per-file results.
 
 ### B6 — Reporting and reliability
-- [ ] Human-readable progress and machine-readable JSON summary.
-- [ ] Deterministic success/failure exit semantics.
-- [ ] Tests for empty inputs, mixed formats, collisions, interrupted runs, and partial failures.
+- [x] Human-readable per-file results and machine-readable JSON summary (no live progress bar claimed).
+- [x] Deterministic success/failure exit semantics.
+- [ ] Verify complete B6 edge-case coverage for empty inputs, collisions, interrupted runs, and partial failures (not all demonstrated in provided evidence).
 
 ### R1.5 — Release
-- [ ] Batch integration tests pass with HEIC and JPEG fixtures.
-- [ ] User guide documents batch commands and output layout.
-- [ ] CI, package build, and independent installed-PyPI smoke test pass.
+- [x] Native 15-image HEIC/JPEG extraction, TIFF export, rebuild and structural validation pass.
+- [ ] User guide documents batch commands and output layout (release patch prepared; verify after applying).
+- [ ] CI, v0.1.5 package build, and independent installed-PyPI smoke test pass.
 
 ## v0.2.x — Generalized HDR and gain-map engine
 
