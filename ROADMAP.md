@@ -23,28 +23,16 @@ The public CLI should describe operations rather than backend implementation det
 
 ## Current position
 
-Release: **v0.1.5 (release candidate)**
+Stable release: **v0.1.5**, published on GitHub and PyPI and installed independently with `uv tool install --reinstall luvix@latest`.
 
-Theme: Batch Apple HDR HEIC/JPEG workflows, reusing validated single-image operations.
+Development status: **paused intentionally**. Luvix v0.1.5 is the daily-driver HDR interoperability utility. No v0.1.6 Live Photo release is planned: the still HEIC/JPEG resource of a Live Photo is already usable through existing commands when it contains a supported HDR gain map. Live Photo motion and key-frame selection are outside the current scope.
 
-Active slice: **R1.5 — Release verification and publication**.
+Next planned development: **v0.2.0**, beginning with **M2.0 — capability audit and backend-routing contract** (below). Do not start implementation until the user resumes development. When resuming, verify the repository and release state, then audit existing libraries and supported formats before designing adapters.
 
-Evidence:
-- v0.1.4 installed from PyPI and Apple HDR backend ready on macOS.
-- B1/B2 commit `609f41f`: 15/15 mixed sanitized HEIC/JPEG fixtures inspected and extracted.
-- B3/B4 commit `3d6d559`: 15/15 linear32 and 15/15 PQ16 TIFF exports, with expected ICC and orientation metadata.
-- B5/B6 commit `17fae6a`: 15/15 native rebuilds and 15/15 structural validations; automatic output directory creation retested successfully.
-- 86 tests passed; Ruff, formatting, `uv lock --check`, build, and Twine passed before version bump (artifacts were still v0.1.4).
-- Public fixture set includes 7 HEIC and 8 JPEG images, EXIF orientations 1 and 6; metadata review found no GPS or serial fields in the checked groups.
+v0.1.5 evidence: 86 automated tests passed; 15/15 mixed HEIC/JPEG extractions, 15/15 linear32 TIFF exports, 15/15 PQ16 TIFF exports, 15/15 rebuilds and 15/15 structural validations passed on sanitized fixtures spanning EXIF orientations 1 and 6. GitHub release `v0.1.5` published to PyPI through Trusted Publishing; independently installed CLI reported `luvix 0.1.5`, native Apple backend ready, and 15/15 installed-CLI batch extraction smoke tests passed. The external P3 PQ ICC is not redistributed.
 
-Next action:
-1. Apply v0.1.5 documentation and version changes, run `uv lock` and complete final local gates.
-2. Verify wheel Swift resources and absence of proprietary ICC files.
-3. Push feature branch, obtain green GitHub CI, merge to `main`.
-4. Tag/release v0.1.5, verify PyPI Trusted Publishing, then test installed v0.1.5.
-5. Record publication evidence and select the next active slice only after the release succeeds.
+Current blockers: **none for v0.1.5 daily use**. Optional future library availability and color-management contracts are research tasks for v0.2.0, not blockers for the stable release.
 
-Blockers: no known implementation blockers. Tagged 16-bit PQ requires an external compatible ICC profile.
 
 ## Supported today
 
@@ -232,6 +220,61 @@ Theme: apply the established single-image Apple HEIC/JPEG interoperability opera
 - [x] Native 15-image HEIC/JPEG extraction, TIFF export, rebuild and structural validation pass.
 - [ ] User guide documents batch commands and output layout (release patch prepared; verify after applying).
 - [ ] CI, v0.1.5 package build, and independent installed-PyPI smoke test pass.
+
+## Architecture decision — backend orchestration (2026-10-12)
+
+**Luvix is a user-friendly, backend-independent HDR/gain-map interoperability and workflow orchestration utility, not a new codec or image-processing engine.** Prefer proven libraries for decoding, encoding, color transforms, and metadata operations; do not reimplement capabilities that are already available and reliable. Keep the user-facing CLI and future Python API centered on operations rather than implementation details.
+
+```text
+                       LUVIX
+          HDR Image Interoperability Toolkit
+                         |
+              Unified CLI / Python API
+                         |
+           +-------------+-------------+
+           |                           |
+     Workflow Layer              Format Registry
+           |                           |
+     +-----+------+              +-----+------+
+     |            |              |            |
+   Single       Batch          Detection    Capabilities
+     |            |              |            |
+     +------------+--------------+------------+
+                         |
+                   Backend Router
+                         |
+       +-----------------+-------------------+
+       |                 |                   |
+       v                 v                   v
+   Apple ImageIO      libvips           libultrahdr
+       |                 |                   |
+       +-----------------+-------------------+
+                         |  (optional adapters,
+                         |   e.g. ImageMagick)
+                         v
+                  Color Management
+                 ICC / LCMS / OCIO
+                         |
+                         v
+                 Standardized Results
+```
+
+The diagram describes a **proposed** architecture, not a claim that all adapters are implemented. Backends must be optional, discoverable, and selected by verified operation/format capabilities rather than extension alone. Prefer the Apple-native backend where it already works; never silently substitute a backend that changes color interpretation or drops required metadata. Allow explicit backend selection for debugging when practical.
+
+The interchange contract must explicitly describe pixel representation, color primaries/white point, transfer function, scene- vs display-referred interpretation, reference white/headroom, gain-map metadata, orientation, and provenance. Use established color-management libraries instead of creating a new general ICC/OCIO engine. Continue to support single and batch operations through shared processing paths.
+
+**Scope boundary:** Luvix is not a RAW developer, photo editor, or Live Photo motion editor. Existing RAW workflows remain in their dedicated applications; a future scene-linear EXR/TIFF adapter may be evaluated only against a demonstrated interoperability need. SDR + HDR to gain-map generation remains a long-term goal, using existing codec libraries where feasible.
+
+### M2.0 — Capability audit and backend-routing contract (first task on resumption)
+
+- [ ] Audit current libvips/pyvips, libultrahdr, ImageMagick, Apple ImageIO, and relevant color-management library capabilities and versions.
+- [ ] Build a tested operation/format matrix for inspect, extract, rebuild, convert, encode, generate, and batch, including ISO 21496-1 and Ultra HDR variants.
+- [ ] Identify overlap with existing tools and select integration over duplication; record gaps and platform/dependency tradeoffs.
+- [ ] Specify optional-backend discovery, capability registration, routing precedence, explicit override, and predictable failure behavior.
+- [ ] Define representation/color/metadata contracts before cross-backend conversion; preserve v0.1.5 behavior and regression tests.
+- [ ] Update M2.1–M2.7 priorities based on audit evidence before implementation.
+
+**Pause/resume handoff:** v0.1.5 is released and usable. Development is intentionally paused. On explicit resumption, check this ledger and repository state, start M2.0, and do not treat proposed backend capabilities as implemented.
 
 ## v0.2.x — Generalized HDR and gain-map engine
 
